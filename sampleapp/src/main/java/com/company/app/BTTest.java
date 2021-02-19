@@ -12,35 +12,37 @@ import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 public class BTTest {
     BigTableTestingApi bigTableTestingApi;
     Map <UUID, Data> map;
 
     public static void main(String[] args) throws InterruptedException, IOException {
-        String credPath = args[0];
-        String testType = args[1];
+        String testType = args[0];
         if (!testType.equals("read") && !testType.equals("write")) {
             throw new RuntimeException("Pass test type as either read or write");
         }
-        long threadCount = Long.parseLong(args[2]);
-        long timerMillis = Long.parseLong(args[3]);
-        String outputFilePath = args[4];
+        long threadCount = Long.parseLong(args[1]);
+        long timerMillis = Long.parseLong(args[2]);
+        String outputFilePath = args[3];
 
         BTTest self = new BTTest();
-        self.init(credPath);
+        self.init();
         self.run(testType, threadCount, timerMillis);
         self.cleanUp(outputFilePath);
     }
 
-    void init(String credPath) throws IOException {
-        bigTableTestingApi = new BigTableTestingApi(credPath);
+    void init() throws IOException {
+        bigTableTestingApi = new BigTableTestingApi();
         bigTableTestingApi.setup();
         map = new HashMap<>();
     }
 
     void run(String testType, Long threadCount, long timerMillis) throws InterruptedException {
+        System.out.println("Starting " + testType + " test");
+        System.out.println("Using " + threadCount + " threads to perform test");
+        System.out.println("Script will run for " + timerMillis + " milliseconds");
+
         List<ReqThread> reqThreads = new ArrayList<>();
         while(threadCount-- > 0) {
             ReqThread reqThread = new ReqThread(bigTableTestingApi, testType, map);
@@ -52,11 +54,13 @@ public class BTTest {
         for (ReqThread thread: reqThreads) {
             thread.stop();
         }
+        System.out.println(testType + " test ended");
     }
 
     void cleanUp(String outputFilePath) throws IOException {
         bigTableTestingApi.close();
 
+        System.out.println("Writing results to " + outputFilePath);
         FileWriter myFile = new FileWriter(outputFilePath);
         myFile.write("request_id,req_start,req_end\n");
 
@@ -71,6 +75,7 @@ public class BTTest {
             );
         }
         myFile.close();
+        System.out.println("Done writing results");
     }
 }
 
@@ -87,18 +92,22 @@ class ReqThread extends Thread {
 
     public void run() {
         while(true) {
-            long startTime = System.currentTimeMillis();
-            System.out.println(testType);
+            long startTime = 0, endTime = 0;
             try {
                 if (testType.equals("read")) {
+                    startTime = System.currentTimeMillis();
                     bigTableTestingApi.performRead();
-                } else {
+                    endTime = System.currentTimeMillis();
+                } else if (testType.equals("write")) {
+                    startTime = System.currentTimeMillis();
                     bigTableTestingApi.performWrite();
+                    endTime = System.currentTimeMillis();
+                } else {
+                    throw new RuntimeException("Invalid test type supplied: " + testType);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            long endTime = System.currentTimeMillis();
             map.put(
                 UUID.randomUUID(),
                 new Data(startTime, endTime)
@@ -124,19 +133,7 @@ class BigTableTestingApi {
     private final BigtableDataClient dataClient;
     private final BigtableTableAdminClient adminClient;
 
-    public BigTableTestingApi(String credPath) throws IOException {
-//        publisher = Publisher
-//            .newBuilder("projects/data-platform-246911/topics/michael-signumingest-oom-test")
-//            .setCredentialsProvider(
-//                FixedCredentialsProvider.create(
-//                    ServiceAccountCredentials.fromStream(
-//                        new FileInputStream(
-//                            new File(credPath)
-//                        )
-//                    )
-//                )
-//            )
-//            .build();
+    public BigTableTestingApi() throws IOException {
         BigtableDataSettings settings = BigtableDataSettings.newBuilder()
                 .setProjectId(PROJECT_ID)
                 .setInstanceId(INSTANCE_ID)
@@ -154,6 +151,7 @@ class BigTableTestingApi {
 
     public void setup() {
         createTestTable();
+        System.out.println("Writing sample row to table");
         writeToTestTable();
     }
 
@@ -272,7 +270,7 @@ class BigTableTestingApi {
     }
 
     private void deleteTable(String tableId) {
-        System.out.println("\nDeleting table: " + tableId);
+        System.out.println("Deleting table: " + tableId);
         try {
             adminClient.deleteTable(tableId);
             System.out.printf("Table %s deleted successfully%n", tableId);
