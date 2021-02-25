@@ -18,11 +18,13 @@ public class LoadRunner {
 
     // I suggest not sending rps > 10e7, because that's the best a single load generator thread can do
     // other threads are used for processing the submitted commands
-    public void runLoad(Runnable request, long requestsPerSec, long runtimeSec) throws InterruptedException {
-        init();
+    public void runLoad(Runnable request, long requestsPerSec, long runtimeSec, int threads) throws InterruptedException {
+        init(threads);
 
+        System.out.println("Warming up ...");
         warmup(request);
 
+        System.out.println("Processing load ...");
         // starting original load test
         long loadStart = System.currentTimeMillis();
         while (runtimeSec-- > 0) {
@@ -34,26 +36,31 @@ public class LoadRunner {
             if (diff < 999) Thread.sleep(1000 - diff);
         }
         this.testRunTimeMillis = (System.currentTimeMillis() - loadStart);
+        System.out.println("Processing complete.");
 
         close();
     }
 
-    private void init() {
+    private void init(int threads) {
         // let's hope to achieve max usage of processors and threading
-        this.executor = Executors.newWorkStealingPool();
+        this.executor = Executors.newFixedThreadPool(threads);
 
         // maximum trackable latency is 1 minute
         this.histogram = new AtomicHistogram(TimeUnit.MINUTES.toNanos(1), 3);
 
         this.requestsExecutionStarted = new AtomicInteger(0);
+        this.requestsSubmitted = 0;
     }
 
     private void warmup(Runnable request) {
-        // warmup 10 request calls
-        submitRequests(request, 10);
+        // warmup 5 request calls
+        for(int i=0; i<5; i++) {
+            request.run();
+        }
         // reset counters
         requestsExecutionStarted = new AtomicInteger(0);
         requestsSubmitted = 0;
+        histogram.reset();
     }
 
     // this just sends a batch of numRequests requests one after the other without any delay

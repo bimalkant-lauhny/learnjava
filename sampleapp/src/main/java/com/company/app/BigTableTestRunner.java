@@ -17,13 +17,14 @@ public class BigTableTestRunner {
             throw new RuntimeException("Pass test type as either read or write");
         }
 
-        Long testRunTimeSec = Long.parseLong(args[1]);
-        Long rps = Long.parseLong(args[2]);
-        String outputFilePath = args[3];
+        long testRunTimeSec = Long.parseLong(args[1]);
+        long rps = Long.parseLong(args[2]);
+        int threads = Integer.parseInt(args[3]);
+        String outputFilePath = args[4];
 
         BigTableTestRunner self = new BigTableTestRunner();
         self.init();
-        self.runTest(testType, rps, testRunTimeSec);
+        self.runTest(testType, rps, testRunTimeSec, threads);
         self.cleanUp(outputFilePath);
     }
 
@@ -33,11 +34,11 @@ public class BigTableTestRunner {
         loadRunner = new LoadRunner();
     }
 
-    void runTest(String testType, Long requestsPerSec, Long runTimeSec) throws InterruptedException {
+    void runTest(String testType, long requestsPerSec, long runTimeSec, int threads) throws InterruptedException {
         if (testType.equals("read")) {
-            loadRunner.runLoad(() -> bigTableSimpleTestApi.read(), requestsPerSec, runTimeSec);
+            loadRunner.runLoad(() -> bigTableSimpleTestApi.read(), requestsPerSec, runTimeSec, threads);
         } else if (testType.equals("write")) {
-            loadRunner.runLoad(() -> bigTableSimpleTestApi.write(), requestsPerSec, runTimeSec);
+            loadRunner.runLoad(() -> bigTableSimpleTestApi.write(), requestsPerSec, runTimeSec, threads);
         } else {
             throw new RuntimeException("wrong test type provided: " + testType);
         }
