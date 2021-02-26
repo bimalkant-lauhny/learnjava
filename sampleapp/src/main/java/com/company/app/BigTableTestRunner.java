@@ -21,7 +21,10 @@ public class BigTableTestRunner {
         long rps = Long.parseLong(args[2]);
         int threads = Integer.parseInt(args[3]);
         String outputFilePath = args[4];
-
+        System.out.printf(
+            "Args supplied:\nTestType: %s\nTest Runtime in sec: %s\nRequests to send per sec: %s\nThreads: %s\nOutput file: %s\n",
+            args[0], args[1], args[2], args[3], args[4]
+        );
         BigTableTestRunner self = new BigTableTestRunner();
         self.init();
         self.runTest(testType, rps, testRunTimeSec, threads);

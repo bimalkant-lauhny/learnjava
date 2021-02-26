@@ -15,6 +15,7 @@ public class LoadRunner {
     private long requestsSubmitted = 0;
     private AtomicInteger requestsExecutionStarted;
     private long testRunTimeMillis;
+    private int threadCount;
 
     // I suggest not sending rps > 10e7, because that's the best a single load generator thread can do
     // other threads are used for processing the submitted commands
@@ -42,8 +43,9 @@ public class LoadRunner {
     }
 
     private void init(int threads) {
+        this.threadCount = threads;
         // let's hope to achieve max usage of processors and threading
-        this.executor = Executors.newFixedThreadPool(threads);
+        this.executor = Executors.newFixedThreadPool(threadCount);
 
         // maximum trackable latency is 1 minute
         this.histogram = new AtomicHistogram(TimeUnit.MINUTES.toNanos(1), 3);
@@ -78,6 +80,7 @@ public class LoadRunner {
 
     private void close() {
         executor.shutdownNow();
+        System.out.println("Threads used: " + threadCount);
         System.out.println("Test runtime: " + testRunTimeMillis/1000 + " seconds");
         System.out.println("Total requests submitted: " + requestsSubmitted);
         System.out.println("Requests for which execution started: " + requestsExecutionStarted.toString());
