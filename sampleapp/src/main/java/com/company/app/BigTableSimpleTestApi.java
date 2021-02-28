@@ -1,11 +1,13 @@
 package com.company.app;
 
+import com.google.api.core.ApiFuture;
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
+import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -58,6 +60,17 @@ class BigTableSimpleTestApi {
 
     public void read() {
         readFromTestTable();
+    }
+
+    public ApiFuture<Void> writeAsync() {
+        RowMutation rowMutation = RowMutation
+                .create(TABLE_ID, ROW_KEY)
+                .setCell(COLUMN_FAMILY, COLUMN_NAME, COLUMN_VALUE);
+        return dataClient.mutateRowAsync(rowMutation);
+    }
+
+    public ApiFuture<Row> readAsync() {
+        return dataClient.readRowAsync(TABLE_ID, ROW_KEY);
     }
 
     public void close() {

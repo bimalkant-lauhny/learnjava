@@ -1,17 +1,20 @@
 package com.company.app;
+import com.google.api.core.ApiFutures;
+import com.google.bigtable.v2.Row;
 import org.HdrHistogram.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class BigTableTestRunner {
-    LoadRunner loadRunner;
+    LoadRunnerAsync loadRunner;
     BigTableSimpleTestApi bigTableSimpleTestApi;
 
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws InterruptedException, IOException, ExecutionException {
         String testType = args[0];
         if (!testType.equals("read") && !testType.equals("write")) {
             throw new RuntimeException("Pass test type as either read or write");
@@ -34,14 +37,15 @@ public class BigTableTestRunner {
     void init() throws IOException {
         bigTableSimpleTestApi = new BigTableSimpleTestApi();
         bigTableSimpleTestApi.setup();
-        loadRunner = new LoadRunner();
     }
 
-    void runTest(String testType, long requestsPerSec, long runTimeSec, int threads) throws InterruptedException {
+    void runTest(String testType, long requestsPerSec, long runTimeSec, int threads) throws InterruptedException, ExecutionException {
         if (testType.equals("read")) {
-            loadRunner.runLoad(() -> bigTableSimpleTestApi.read(), requestsPerSec, runTimeSec, threads);
+            loadRunner = new LoadRunnerAsync<Row>();
+            loadRunner.runLoad(bigTableSimpleTestApi.readAsync(), requestsPerSec, runTimeSec, threads);
         } else if (testType.equals("write")) {
-            loadRunner.runLoad(() -> bigTableSimpleTestApi.write(), requestsPerSec, runTimeSec, threads);
+            loadRunner = new LoadRunnerAsync<Void>();
+            loadRunner.runLoad(bigTableSimpleTestApi.writeAsync(), requestsPerSec, runTimeSec, threads);
         } else {
             throw new RuntimeException("wrong test type provided: " + testType);
         }
