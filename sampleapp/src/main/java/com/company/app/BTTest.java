@@ -48,7 +48,7 @@ public class BTTest {
         try {
             self.runTest(testType);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            System.out.println("Failed running test: " + e.getMessage());
         }
         self.cleanUp(outputFilePath);
 
@@ -124,7 +124,7 @@ public class BTTest {
         try (FileOutputStream fout = new FileOutputStream(outputFile)) {
             histogram.outputPercentileDistribution(new PrintStream(fout), 1000.0);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Failed writing to output file: " + e.getMessage());
         }
         System.out.println("Saved histogram to file: " + outputFilePath);
     }
