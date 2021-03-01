@@ -1,20 +1,13 @@
 package com.company.app;
-import com.google.api.core.ApiFutures;
 import com.google.bigtable.v2.Row;
-import org.HdrHistogram.*;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 public class BigTableTestRunner {
     LoadRunnerAsync loadRunner;
     BigTableSimpleTestApi bigTableSimpleTestApi;
 
-    public static void main(String[] args) throws InterruptedException, IOException, ExecutionException {
+    public static void main(String[] args) throws Exception {
         String testType = args[0];
         if (!testType.equals("read") && !testType.equals("write")) {
             throw new RuntimeException("Pass test type as either read or write");
@@ -39,13 +32,13 @@ public class BigTableTestRunner {
         bigTableSimpleTestApi.setup();
     }
 
-    void runTest(String testType, long requestsPerSec, long runTimeSec, int threads) throws InterruptedException, ExecutionException {
+    void runTest(String testType, long requestsPerSec, long runTimeSec, int threads) throws Exception {
         if (testType.equals("read")) {
             loadRunner = new LoadRunnerAsync<Row>();
-            loadRunner.runLoad(bigTableSimpleTestApi.readAsync(), requestsPerSec, runTimeSec, threads);
+            loadRunner.runLoad(() -> bigTableSimpleTestApi.readAsync(), requestsPerSec, runTimeSec, threads);
         } else if (testType.equals("write")) {
             loadRunner = new LoadRunnerAsync<Void>();
-            loadRunner.runLoad(bigTableSimpleTestApi.writeAsync(), requestsPerSec, runTimeSec, threads);
+            loadRunner.runLoad(() -> bigTableSimpleTestApi.writeAsync(), requestsPerSec, runTimeSec, threads);
         } else {
             throw new RuntimeException("wrong test type provided: " + testType);
         }

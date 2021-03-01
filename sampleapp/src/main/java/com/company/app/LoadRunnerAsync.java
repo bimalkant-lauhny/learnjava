@@ -3,6 +3,7 @@ package com.company.app;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
+import com.google.api.core.ListenableFutureToApiFuture;
 import com.google.common.util.concurrent.*;
 import org.HdrHistogram.AtomicHistogram;
 import org.HdrHistogram.Histogram;
@@ -11,6 +12,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -24,8 +26,8 @@ public class LoadRunnerAsync<ResponseType> {
 
     // I suggest not sending rps > 10e7, because that's the best a single load generator thread can do
     // other threads are used for listening for the responses of submitted requests
-    public void runLoad(ApiFuture<ResponseType> request, long requestsPerSec, long runtimeSec, int threads)
-            throws InterruptedException, ExecutionException {
+    public void runLoad(Callable<ResponseType> request, long requestsPerSec, long runtimeSec, int threads)
+            throws Exception {
         init(threads);
 
         System.out.println("Warming up ...");
@@ -59,10 +61,11 @@ public class LoadRunnerAsync<ResponseType> {
         this.requestsSubmitted = 0;
     }
 
-    private void warmup(ApiFuture<ResponseType> request) throws ExecutionException, InterruptedException {
+    private void warmup(Callable<ResponseType> request) throws InterruptedException, ExecutionException {
         // warmup 5 blocking request calls
         for(int i=0; i<5; i++) {
-            request.get();
+            ApiFuture<ResponseType> responseFuture = new ListenableFutureToApiFuture<>(executor.submit(request));
+            responseFuture.get();
         }
         // reset counters
         requestsSubmitted = 0;
@@ -70,11 +73,12 @@ public class LoadRunnerAsync<ResponseType> {
     }
 
     // this just sends a batch of numRequests requests one after the other without any delay
-    private void submitRequests(ApiFuture<ResponseType> request, long numRequests) {
+    private void submitRequests(Callable<ResponseType> request, long numRequests) {
         while(numRequests-- > 0) {
             long start = System.nanoTime();
+            ApiFuture<ResponseType> responseFuture = new ListenableFutureToApiFuture<>(executor.submit(request));
             ApiFutures.addCallback(
-                request,
+                responseFuture,
                 new ApiFutureCallback<ResponseType>() {
                     @Override
                     public void onSuccess(ResponseType res) {
