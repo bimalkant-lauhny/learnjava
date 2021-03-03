@@ -209,6 +209,8 @@ public class BigTableFeaturestoreLoadSimulator {
                         .filter(FILTERS.family().exactMatch("object_features_scores"))
                         .filter(FILTERS.qualifier().exactMatch("object_id"))
                         .filter(FILTERS.value().exactMatch(objectId))
+                        .filter(FILTERS.limit().cellsPerColumn(1))
+                        .filter(FILTERS.limit().cellsPerRow(1))
         );
         BulkMutation ofsBulkMutation = BulkMutation.create("object_features_scores");
         dataClient.readRowsAsync(ofsQuery, new ResponseObserver<Row>() {
