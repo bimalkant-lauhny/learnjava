@@ -41,7 +41,7 @@ public class BigTableFeaturestoreLoadSimulator {
     private static final String INSTANCE_ID = "feature-store-stg";
     private BigtableDataClient dataClient;
     private BigtableTableAdminClient adminClient;
-    ExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(128));
+    private static final ExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(128));
     Histogram histogram = new AtomicHistogram(TimeUnit.MINUTES.toNanos(5), 3);
     List<String> featureIds = new ArrayList<>();
     List<String[]> sample;
@@ -61,8 +61,9 @@ public class BigTableFeaturestoreLoadSimulator {
         sim.setup();
         try {
             sim.simulateFeaturestoreLoad();
-            System.out.println("Sleeping for "+ waitAfterPushSecs +" minute");
+            System.out.println("Sleeping for "+ waitAfterPushSecs +" seconds");
             Thread.sleep(waitAfterPushSecs*1000);
+            executor.shutdownNow();
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
         }
@@ -94,7 +95,6 @@ public class BigTableFeaturestoreLoadSimulator {
     }
 
     public void close() {
-        executor.shutdownNow();
         dataClient.close();
         adminClient.close();
         File outputFile = new File(hdrOutputFile);
@@ -232,7 +232,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
             @Override
             public void onResponse(Row row) {
-                System.out.println("got response " + row.getKey());
                 ofsBulkMutation.add(RowMutationEntry.create(row.getKey()).deleteRow());
             }
 
@@ -243,7 +242,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
             @Override
             public void onComplete() {
-                System.out.println(ofsBulkMutation.getEntryCount());
                 ApiFutures.addCallback(
                         dataClient.bulkMutateRowsAsync(ofsBulkMutation),
                         new ApiFutureCallback<Void>() {
