@@ -103,7 +103,6 @@ public class BigTableFeaturestoreLoadSimulator {
                 public void onFailure(Throwable throwable) { }
                 @Override
                 public void onSuccess(List<Void> voids) {
-                    System.out.println("delete successful");
                     ApiFutures.addCallback(
                         insertData(objectId, objectVersionId),
                         new ApiFutureCallback<List<Void>>() {
@@ -111,7 +110,6 @@ public class BigTableFeaturestoreLoadSimulator {
                             public void onFailure(Throwable throwable) { }
                             @Override
                             public void onSuccess(List<Void> voids) {
-                                System.out.println("insert successful");
                                 histogram.recordValue(System.nanoTime() - start);
                             }
                         },
