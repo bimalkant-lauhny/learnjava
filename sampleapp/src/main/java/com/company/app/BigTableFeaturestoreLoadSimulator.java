@@ -45,26 +45,24 @@ public class BigTableFeaturestoreLoadSimulator {
     Histogram histogram = new AtomicHistogram(TimeUnit.MINUTES.toNanos(5), 3);
     List<String> featureIds = new ArrayList<>();
     List<String[]> sample;
-    static Long simRuns;
+    static Long simRuns, waitAfterPushSecs;
     static String hdrOutputFile;
 
     public static void main(String[] args) throws CsvException, IOException {
-        long testRuns = Long.parseLong(args[0]);
-        String outputFilePath = args[1];
+        simRuns = Long.parseLong(args[0]);
+        waitAfterPushSecs = Long.parseLong(args[1]);
+        hdrOutputFile = args[2];
         System.out.printf(
-                "Args supplied:\nTest Runs: %s\nOutput file: %s\n",
-                testRuns, outputFilePath
+                "Args supplied:\nTest Runs: %s\nWait after pushing(seconds): %s\nOutput file: %s\n",
+                simRuns, waitAfterPushSecs, hdrOutputFile
         );
-
-        simRuns = testRuns;
-        hdrOutputFile = outputFilePath;
 
         BigTableFeaturestoreLoadSimulator sim = new BigTableFeaturestoreLoadSimulator();
         sim.setup();
         try {
             sim.simulateFeaturestoreLoad();
-            System.out.println("Sleeping for 1 minute");
-            Thread.sleep(60000);
+            System.out.println("Sleeping for "+ waitAfterPushSecs +" minute");
+            Thread.sleep(waitAfterPushSecs*1000);
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
         }
@@ -116,12 +114,17 @@ public class BigTableFeaturestoreLoadSimulator {
             asyncRun(objectId, objectVersionId);
 //            syncRun(objectId, objectVersionId);
         }
-
     }
 
-    private void putRandomData(String objectId, String objectVersionId, long index) throws ExecutionException, InterruptedException {
-        insertData(objectId, objectVersionId).get();
-        System.out.println("inserted data: " + index);
+    private void putRandomData(String objectId, String objectVersionId, long index) {
+        executor.submit(() -> {
+            try {
+                insertData(objectId, objectVersionId).get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+            System.out.println("inserted data: " + index);
+        });
     }
 
     private void asyncRun(String objectId, String objectVersionId) {
