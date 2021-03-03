@@ -20,6 +20,7 @@ import com.opencsv.exceptions.CsvException;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +44,7 @@ public class BigTableFeaturestoreLoadSimulator {
     ExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(128));
     Histogram histogram = new AtomicHistogram(TimeUnit.MINUTES.toNanos(5), 3);
     List<String> featureIds = new ArrayList<>();
+    List<String[]> sample;
     static Long simRuns;
     static String hdrOutputFile;
 
@@ -60,9 +62,8 @@ public class BigTableFeaturestoreLoadSimulator {
         BigTableFeaturestoreLoadSimulator sim = new BigTableFeaturestoreLoadSimulator();
         sim.setup();
         try {
-            while (simRuns-- > 0) {
-                sim.simulateFeaturestoreLoad();
-            }
+            sim.simulateFeaturestoreLoad();
+            System.out.println("Sleeping for 1 minute");
             Thread.sleep(60000);
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
@@ -88,6 +89,10 @@ public class BigTableFeaturestoreLoadSimulator {
         CSVReader reader = new CSVReaderBuilder(new FileReader("src/main/java/com/company/app/features.csv"))
                 .withSkipLines(1).build();
         for (String[] f: reader.readAll()) featureIds.add(f[0]);
+
+        reader = new CSVReaderBuilder(new FileReader("src/main/java/com/company/app/sample.csv"))
+                .withSkipLines(1).build();
+        sample = reader.readAll();
     }
 
     public void close() {
@@ -102,25 +107,25 @@ public class BigTableFeaturestoreLoadSimulator {
         }
     }
 
-    public void simulateFeaturestoreLoad() {
-        String objectId = "CLI-8YRXMW71";
-        String objectVersionId = "6db859f6-bcb5-4ef4-9652-0b7c2096f3c7";
-        long start = System.nanoTime();
-        // insert test data
-//        ApiFutures.addCallback(
-//                insertData(objectId, objectVersionId),
-//                new ApiFutureCallback<List<Void>>() {
-//                    @Override
-//                    public void onFailure(Throwable throwable) { }
-//
-//                    @Override
-//                    public void onSuccess(List<Void> unused) {
-//                        System.out.println("ofs update done");
-//                    }
-//                },
-//                executor
-//        );
+    public void simulateFeaturestoreLoad() throws ExecutionException, InterruptedException {
+        for(int i=0; i<simRuns; i++) {
+            String [] row = sample.get(i);
+            String objectId = row[0];
+            String objectVersionId = row[1];
+//            putRandomData(objectId, objectVersionId, i);
+            asyncRun(objectId, objectVersionId);
+//            syncRun(objectId, objectVersionId);
+        }
 
+    }
+
+    private void putRandomData(String objectId, String objectVersionId, long index) throws ExecutionException, InterruptedException {
+        insertData(objectId, objectVersionId).get();
+        System.out.println("inserted data: " + index);
+    }
+
+    private void asyncRun(String objectId, String objectVersionId) {
+        long start = System.nanoTime();
         // this shouldn't have sync overhead
         ApiFutures.addCallback(
                 ApiFutures.allAsList(Arrays.asList(
@@ -133,36 +138,40 @@ public class BigTableFeaturestoreLoadSimulator {
 
                     @Override
                     public void onSuccess(List<Void>unused) {
+                        System.out.println("done");
                         histogram.recordValue(System.nanoTime() - start);
                     }
                 },
                 executor
         );
+    }
 
-         // this had some sync overhead
-//        ApiFutures.addCallback(
-//            deleteData(objectId, objectVersionId),
-//            new ApiFutureCallback<List<Void>>() {
-//                @Override
-//                public void onFailure(Throwable throwable) { }
-//                @Override
-//                public void onSuccess(List<Void> voids) {
-//                    ApiFutures.addCallback(
-//                        insertData(objectId, objectVersionId),
-//                        new ApiFutureCallback<List<Void>>() {
-//                            @Override
-//                            public void onFailure(Throwable throwable) { }
-//                            @Override
-//                            public void onSuccess(List<Void> voids) {
-//                                histogram.recordValue(System.nanoTime() - start);
-//                            }
-//                        },
-//                        executor
-//                    );
-//                }
-//            },
-//            executor
-//        );
+    private void syncRun(String objectId, String objectVersionId) {
+        long start = System.nanoTime();
+        // this had some sync overhead
+        ApiFutures.addCallback(
+            deleteData(objectId, objectVersionId),
+            new ApiFutureCallback<List<Void>>() {
+                @Override
+                public void onFailure(Throwable throwable) { }
+                @Override
+                public void onSuccess(List<Void> voids) {
+                    ApiFutures.addCallback(
+                        insertData(objectId, objectVersionId),
+                        new ApiFutureCallback<List<Void>>() {
+                            @Override
+                            public void onFailure(Throwable throwable) { }
+                            @Override
+                            public void onSuccess(List<Void> voids) {
+                                histogram.recordValue(System.nanoTime() - start);
+                            }
+                        },
+                        executor
+                    );
+                }
+            },
+            executor
+        );
     }
 
     private SettableApiFuture<Void> updateOv(String objectId, String objectVersionId) {
@@ -189,6 +198,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
                                     @Override
                                     public void onSuccess(Void unused) {
+                                        System.out.println("updated ov");
                                         updateOvApiFuture.set(null);
                                     }
                                 },
@@ -219,6 +229,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
             @Override
             public void onResponse(Row row) {
+                System.out.println("got response " + row.getKey());
                 ofsBulkMutation.add(RowMutationEntry.create(row.getKey()).deleteRow());
             }
 
@@ -229,7 +240,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
             @Override
             public void onComplete() {
-                addOfsBulkMutation(ofsBulkMutation, objectId, objectVersionId);
+                System.out.println(ofsBulkMutation.getEntryCount());
                 ApiFutures.addCallback(
                         dataClient.bulkMutateRowsAsync(ofsBulkMutation),
                         new ApiFutureCallback<Void>() {
@@ -240,7 +251,22 @@ public class BigTableFeaturestoreLoadSimulator {
 
                             @Override
                             public void onSuccess(Void unused) {
-                                updateOfsApiFuture.set(null);
+                                ApiFutures.addCallback(
+                                        dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionId)),
+                                        new ApiFutureCallback<Void>() {
+                                            @Override
+                                            public void onFailure(Throwable th) {
+                                                updateOfsApiFuture.setException(th);
+                                            }
+
+                                            @Override
+                                            public void onSuccess(Void unused) {
+                                                System.out.println("updated ofs");
+                                                updateOfsApiFuture.set(null);
+                                            }
+                                        },
+                                        executor
+                                );
                             }
                         },
                         executor
@@ -264,13 +290,15 @@ public class BigTableFeaturestoreLoadSimulator {
                 .setCell("object_versions", "object_version_status", "Pending");
     }
 
-    private void addOfsBulkMutation(BulkMutation ofsBulkMutation,String objectId, String objectVersionId) {
+    private BulkMutation getOfsAddRowsBulkMutation(String objectId, String objectVersionId) {
+        BulkMutation ofsBulkMutation = BulkMutation.create("object_features_scores");
         for (String featureId: featureIds) {
             String ofsId = UUID.randomUUID().toString();
             ofsBulkMutation.add(
                     getOfsRowMutationEntry(ofsId, featureId, objectId, objectVersionId)
             );
         }
+        return ofsBulkMutation;
     }
 
     private RowMutationEntry getOfsRowMutationEntry(String ofsId, String featureId, String objectId, String objectVersionId) {
