@@ -133,7 +133,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                     @Override
                     public void onSuccess(List<Void>unused) {
-                        System.out.println("ofs update done");
                         histogram.recordValue(System.nanoTime() - start);
                     }
                 },
@@ -190,7 +189,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                                     @Override
                                     public void onSuccess(Void unused) {
-                                        System.out.println("Update ov done");
                                         updateOvApiFuture.set(null);
                                     }
                                 },
@@ -229,9 +227,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
             @Override
             public void onComplete() {
-                System.out.println("received all rows: "+ ofsBulkMutation.getEntryCount());
                 addOfsBulkMutation(ofsBulkMutation, objectId, objectVersionId);
-                System.out.println("total mutations: "+ ofsBulkMutation.getEntryCount());
                 ApiFutures.addCallback(
                         dataClient.bulkMutateRowsAsync(ofsBulkMutation),
                         new ApiFutureCallback<Void>() {
@@ -242,7 +238,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                             @Override
                             public void onSuccess(Void unused) {
-                                System.out.println("done updating");
                                 updateOfsApiFuture.set(null);
                             }
                         },
