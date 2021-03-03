@@ -35,7 +35,7 @@ import com.opencsv.CSVReader;
  * family having a single column.
  */
 
-class BigTableFeaturestoreLoadSimulator {
+public class BigTableFeaturestoreLoadSimulator {
     private static final String PROJECT_ID = "data-platform-indodana-staging";
     private static final String INSTANCE_ID = "feature-store-stg";
     private BigtableDataClient dataClient;
@@ -47,7 +47,7 @@ class BigTableFeaturestoreLoadSimulator {
                 simEndTimestamp,
                 simRunLimitSecs = (long)60;
 
-    public static void main(String[] args) throws IOException, CsvException, InterruptedException {
+    public static void main(String[] args) throws IOException, CsvException {
         BigTableFeaturestoreLoadSimulator sim = new BigTableFeaturestoreLoadSimulator();
         sim.setup();
         long simRunTimeMillis = simRunLimitSecs*1000;
@@ -80,7 +80,7 @@ class BigTableFeaturestoreLoadSimulator {
         for (String[] f: reader.readAll()) featureIds.add(f[0]);
     }
 
-    public void close() throws InterruptedException {
+    public void close() {
         executor.shutdownNow();
         dataClient.close();
         adminClient.close();
