@@ -111,7 +111,6 @@ public class BigTableFeaturestoreLoadSimulator {
             String [] row = sample.get(i);
             String objectId = row[0];
             String objectVersionTimestamp = row[1];
-            System.out.println(objectId + " " + objectVersionTimestamp);
 //            putRandomData(objectId, objectVersionTimestamp, i);
             asyncRun(objectId, objectVersionTimestamp);
 //            syncRun(objectId, objectVersionId);
@@ -155,7 +154,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                     @Override
                     public void onSuccess(List<Void>unused) {
-                        System.out.println("done");
                         histogram.recordValue(System.nanoTime() - start);
                     }
                 },
@@ -205,7 +203,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                     @Override
                     public void onSuccess(Void unused) {
-                        System.out.println("updated ov");
                         updateOvApiFuture.set(null);
                     }
                 },
@@ -256,7 +253,6 @@ public class BigTableFeaturestoreLoadSimulator {
 
                     @Override
                     public void onSuccess(Void unused) {
-                        System.out.println("updated ofs");
                         updateOfsApiFuture.set(null);
                     }
                 },
@@ -341,7 +337,6 @@ public class BigTableFeaturestoreLoadSimulator {
         BulkMutation ofsBulkMutation = BulkMutation.create("object_features_scores");
         for (String featureId: featureIds) {
             String ofsKey = objectId + "#" + objectVersionTimestamp + "#" + featureId;
-            System.out.println(ofsKey);
             ofsBulkMutation.add(
                     getOfsRowMutationEntry(ofsKey, featureId, objectId, objectVersionTimestamp)
             );
