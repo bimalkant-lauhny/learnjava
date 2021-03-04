@@ -45,7 +45,8 @@ public class BigTableFeaturestoreLoadSimulator {
     List<String[]> sample;
     static Long simRuns, waitAfterPushSecs, lastResponseTime;
     static String hdrOutputFile;
-
+    AtomicInteger requestsCompleted = new AtomicInteger(0);
+    static long simStartTime;
 
     public static void main(String[] args) throws CsvException, IOException {
         simRuns = Long.parseLong(args[0]);
@@ -58,7 +59,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
         BigTableFeaturestoreLoadSimulator sim = new BigTableFeaturestoreLoadSimulator();
         sim.setup();
-        long simStart = System.currentTimeMillis();
+        simStartTime = System.currentTimeMillis();
         try {
             sim.simulateFeaturestoreLoad();
             System.out.println("Sleeping for "+ waitAfterPushSecs +" seconds");
@@ -67,7 +68,7 @@ public class BigTableFeaturestoreLoadSimulator {
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
         } finally {
-            System.out.println("Simulation run time: " + (System.currentTimeMillis() - simStart)/1000 + "seconds");
+            System.out.println("Simulation run time: " + (System.currentTimeMillis() - simStartTime)/1000 + "seconds");
             sim.close();
         }
     }
@@ -156,6 +157,10 @@ public class BigTableFeaturestoreLoadSimulator {
                     @Override
                     public void onSuccess(List<Void>unused) {
                         histogram.recordValue(System.nanoTime() - start);
+                        long reqNumber = requestsCompleted.incrementAndGet();
+                        if (reqNumber == simRuns) {
+                            System.out.println("All requests done in " + (System.currentTimeMillis() - simStartTime)/1000 + "seconds");
+                        }
                     }
                 },
                 executor
