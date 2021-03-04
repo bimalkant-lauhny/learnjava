@@ -110,7 +110,7 @@ public class BigTableFeaturestoreLoadSimulator {
 
     public void simulateFeaturestoreLoad() throws ExecutionException, InterruptedException {
         for(int i=0; i<simRuns; i++) {
-            String [] row = sample.get(i);
+            String [] row = sample.get(i%100000);
             String objectId = row[0];
             String objectVersionTimestamp = row[1];
 //            putRandomData(objectId, objectVersionTimestamp, i);
@@ -158,8 +158,8 @@ public class BigTableFeaturestoreLoadSimulator {
                     public void onSuccess(List<Void>unused) {
                         histogram.recordValue(System.nanoTime() - start);
                         long reqNumber = requestsCompleted.incrementAndGet();
-                        if (reqNumber == simRuns) {
-                            System.out.println("All requests done in " + (System.currentTimeMillis() - simStartTime)/1000 + "seconds");
+                        if (reqNumber%1000 == 0 || reqNumber == simRuns) {
+                            System.out.println("" + reqNumber + " requests done in " + (System.currentTimeMillis() - simStartTime)/1000 + " seconds");
                         }
                     }
                 },
