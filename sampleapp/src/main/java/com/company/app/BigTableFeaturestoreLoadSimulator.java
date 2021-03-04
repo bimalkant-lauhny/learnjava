@@ -59,9 +59,11 @@ public class BigTableFeaturestoreLoadSimulator {
         BigTableFeaturestoreLoadSimulator sim = new BigTableFeaturestoreLoadSimulator();
         sim.setup();
         try {
+            long simStart = System.currentTimeMillis();
             sim.simulateFeaturestoreLoad();
             System.out.println("Sleeping for "+ waitAfterPushSecs +" seconds");
             Thread.sleep(waitAfterPushSecs*1000);
+            System.out.println("Simulation run time: " + (System.currentTimeMillis() - simStart)/1000 + "seconds");
             executor.shutdownNow();
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
