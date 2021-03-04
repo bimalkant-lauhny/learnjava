@@ -68,7 +68,7 @@ public class BigTableFeaturestoreLoadSimulator {
         } catch (Exception e) {
            System.out.println("Got error while running sim: " + e.getMessage());
         } finally {
-            System.out.println("Simulation run time: " + (System.currentTimeMillis() - simStartTime)/1000 + "seconds");
+            System.out.println("Simulation run time: " + (System.currentTimeMillis() - simStartTime)/1000 + " seconds");
             sim.close();
         }
     }
@@ -147,8 +147,10 @@ public class BigTableFeaturestoreLoadSimulator {
 //        );
         ApiFutures.addCallback(
                 ApiFutures.allAsList(Arrays.asList(
-                        updateOv(objectId, objectVersionTimestamp),
-                        updateOfs(objectId, objectVersionTimestamp)
+//                        updateOv(objectId, objectVersionTimestamp),
+//                        updateOfs(objectId, objectVersionTimestamp),
+                        dataClient.mutateRowAsync(getOvRowMutation(objectId, objectVersionTimestamp)),
+                        dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionTimestamp))
                 )),
                 new ApiFutureCallback<List<Void>>() {
                     @Override
@@ -195,12 +197,12 @@ public class BigTableFeaturestoreLoadSimulator {
         );
     }
 
-    private SettableApiFuture<Void> updateOv(String objectId, String objectVersionTimstamp) {
+    private SettableApiFuture<Void> updateOv(String objectId, String objectVersionTimestamp) {
         SettableApiFuture<Void> updateOvApiFuture = SettableApiFuture.create();
-//        RowMutation ovMutation = RowMutation.create("object_versions", objectVersionTimstamp)
+//        RowMutation ovMutation = RowMutation.create("object_versions", objectVersionTimestamp)
 //                .deleteRow();
         ApiFutures.addCallback(
-                dataClient.mutateRowAsync(getOvRowMutation(objectId, objectVersionTimstamp)),
+                dataClient.mutateRowAsync(getOvRowMutation(objectId, objectVersionTimestamp)),
                 new ApiFutureCallback<Void>() {
                     @Override
                     public void onFailure(Throwable th) {
