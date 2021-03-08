@@ -1,5 +1,8 @@
 package com.company.app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.core.*;
 import com.google.api.gax.rpc.ResponseObserver;
 import com.google.api.gax.rpc.StreamController;
@@ -150,7 +153,8 @@ public class BigTableFeaturestoreLoadSimulator {
 //                        updateOv(objectId, objectVersionTimestamp),
 //                        updateOfs(objectId, objectVersionTimestamp),
                         dataClient.mutateRowAsync(getOvRowMutation(objectId, objectVersionTimestamp)),
-                        dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionTimestamp))
+//                        dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionTimestamp))
+                        dataClient.mutateRowAsync(getOfsAddRowMutation(objectId, objectVersionTimestamp))
                 )),
                 new ApiFutureCallback<List<Void>>() {
                     @Override
@@ -341,6 +345,28 @@ public class BigTableFeaturestoreLoadSimulator {
                 .setCell("object_versions", "object_version_status", "Pending");
     }
 
+    private RowMutation getOfsAddRowMutation(String objectId, String objectVersionTimestamp) {
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode featureScores = mapper.createArrayNode();
+        for (String featureId: featureIds) {
+            ObjectNode featureScore = mapper.createObjectNode();
+            featureScore.put("feature_slug_name", "days_from_oldest_credit_card_payment_date");
+            featureScore.put("scoring_date", String.valueOf(new Date(new Date().getTime())));
+            featureScore.put("value", "1.3333333333333333");
+            featureScore.put("default_score", 0);
+            featureScore.put("split_value", "null");
+            featureScore.put("description", "null");
+            featureScore.put("result_type", "NUMERIC_LIMIT");
+            featureScores.add(featureScore);
+        }
+        return RowMutation.create("object_features_scores", objectId+"#"+objectVersionTimestamp)
+                .setCell("object_features_scores", "object_id", objectId)
+                .setCell("object_features_scores", "object_version_id", objectVersionTimestamp)
+                .setCell("object_features_scores", "features_scores", featureScores.toString())
+                .setCell("object_features_scores", "created_at", String.valueOf(new Date(new Date().getTime())))
+                .setCell("object_features_scores", "updated_at", String.valueOf(new Date(new Date().getTime())));
+    }
+
     private BulkMutation getOfsAddRowsBulkMutation(String objectId, String objectVersionTimestamp) {
         BulkMutation ofsBulkMutation = BulkMutation.create("object_features_scores");
         for (String featureId: featureIds) {
@@ -416,7 +442,8 @@ public class BigTableFeaturestoreLoadSimulator {
 //        BulkMutation ofsvBulkMutation = BulkMutation.create("object_feature_score_variables");
         return ApiFutures.allAsList(Arrays.asList(
             dataClient.mutateRowAsync(getOvRowMutation(objectId, objectVersionId)),
-            dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionId))
+//            dataClient.bulkMutateRowsAsync(getOfsAddRowsBulkMutation(objectId, objectVersionId))
+            dataClient.mutateRowAsync(getOfsAddRowMutation(objectId, objectVersionId))
 //            dataClient.bulkMutateRowsAsync(ofsvBulkMutation)
         ));
     }
